@@ -1,6 +1,8 @@
 ﻿using System;
 using System.Diagnostics;
+using System.IO;
 using System.Runtime.InteropServices;
+using System.Threading;
 using System.Windows;
 using System.Windows.Automation;
 using System.Windows.Forms;
@@ -76,7 +78,6 @@ namespace NotepadRPA
                     string autoIdName =
                         (elementNode.Current.AutomationId == "") ?
                         "No AutomationID" : elementNode.Current.AutomationId;
-                    Debug.WriteLine($"Name: {controlName} AutomationID: {autoIdName}");
 
                     if (controlName == searchParam)
                     {
@@ -116,50 +117,91 @@ namespace NotepadRPA
                 valuePattern.SetValue(System.IO.Path.GetTempPath() + "hello.txt");
             }
 
+            Console.WriteLine("Checking for running Notepad processes . . .");
             if (isNotepadRunning())
             {
-                Debug.WriteLine("Please close Notepad before running this program.");
+                Console.WriteLine("Please close Notepad before running this program.");
 
                 Environment.Exit(0);
             }
-            Debug.WriteLine("Notepad is not running");
             // Start notepad and wait for idle state
+            Console.WriteLine("Starting Notepad . . .");
             Process np = Process.Start("notepad.exe");
             np.WaitForInputIdle();
+
+            Console.WriteLine("Writing to file . . .");
             SendKeys.SendWait("Hello World");
 
-
             //Get notepad window handle and recursively examine all elements in its associated tree
+            Console.WriteLine("Searching for 'File' element . . .");
             IntPtr windowHandle = np.MainWindowHandle;
             AutomationElement notepadElement = AutomationElement.FromHandle(windowHandle);
             AutomationElement fileElement = FindTreeViewDescendants(notepadElement, "File");
 
             //Click on "File" dropdown
+            Console.WriteLine("Expanding 'File' element . . .");
             ExpandElement(fileElement);
 
             //Find the "Save As..." element and click it
+            Console.WriteLine("Searching for 'Save As...' element . . .");
             AutomationElement saveAsElement = FindTreeViewDescendants(fileElement, "Save As...");
+            Console.WriteLine("Invoking 'Save As...' element . . .");
             InvokeElement(saveAsElement);
 
-            Debug.WriteLine("");
-            Debug.WriteLine("Looking for save as");
+            //Find the "Save As" dialog window
+            Console.WriteLine("Searching for 'Save As' dialog window . . .");
             //Get element tree for save as dialog menu
             AutomationElement saveAsDialogElement = AutomationElement.RootElement.FindFirst(TreeScope.Subtree, new PropertyCondition(AutomationElement.NameProperty, "Save As"));
 
-
-            Debug.WriteLine("");
-            Debug.WriteLine("Looking in save as");
-
-            AutomationElement tmp = FindTreeViewDescendants(saveAsDialogElement, "qwerty");
+            //Find the "File name:" edit element
+            Console.WriteLine("Searching for 'File name:' edit element . . .");
             PropertyCondition p1 = new PropertyCondition(AutomationElement.NameProperty, "File name:");
             PropertyCondition p2 = new PropertyCondition(AutomationElement.ControlTypeProperty, ControlType.Edit);
-            System.Windows.Automation.Condition[] conditionArray = new System.Windows.Automation.Condition[] {p1, p2};
+            System.Windows.Automation.Condition[] conditionArray = new System.Windows.Automation.Condition[] { p1, p2 };
             AutomationElement saveLabelElement = saveAsDialogElement.FindFirst(TreeScope.Subtree, new AndCondition(conditionArray));
 
             //Modify value of the file name
+            Console.WriteLine("Modifying file name . . .");
             SetValue(saveLabelElement);
-            
+
+            //Get Save button and invoke element
+            Console.WriteLine("Searching for 'Save' button element . . .");
+            AutomationElement saveButtonElement = saveAsDialogElement.FindFirst(TreeScope.Subtree, new AndCondition(new System.Windows.Automation.Condition[]
+            {
+                        new PropertyCondition(AutomationElement.NameProperty, "Save"),
+                        new PropertyCondition(AutomationElement.ControlTypeProperty, ControlType.Button)
+            }));
+            Console.WriteLine("Invoking 'Save' button . . .");
+            InvokeElement(saveButtonElement);
+
+            //Check if "Confirm Save As" dialog window exists
+            Console.WriteLine(@"Looking for 'Confirm Save As' dialog window");
+            AutomationElement confirmSaveAsDialogElement = AutomationElement.RootElement.FindFirst(TreeScope.Subtree, new AndCondition(new System.Windows.Automation.Condition[]
+            {
+                        new PropertyCondition(AutomationElement.NameProperty, "Confirm Save As"),
+                        new PropertyCondition(AutomationElement.ControlTypeProperty, ControlType.Window)
+            }));
+
+            //File already exists, confirm overwrite
+            if (confirmSaveAsDialogElement != null)
+            {
+                //Get "Yes" button from "Confirm Save As
+                Console.WriteLine("File already exists, searching for 'Yes' button . . .");
+                AutomationElement yesButtonElement = confirmSaveAsDialogElement.FindFirst(TreeScope.Descendants, new AndCondition(new System.Windows.Automation.Condition[]
+                {
+                        new PropertyCondition(AutomationElement.NameProperty, "Yes"),
+                        new PropertyCondition(AutomationElement.ControlTypeProperty, ControlType.Button)
+                }));
+                Console.WriteLine("Invoking 'Yes' button . . .");
+                InvokeElement(yesButtonElement);
+            }
+
+            //Verify file was saved to location
+            Console.WriteLine(File.Exists(System.IO.Path.GetTempPath() + "hello.txt") ? "File saved, task completed successfully" : "Warning: File was not saved");
+
             //Close notepad
+            Console.WriteLine("Closing Notepad . . .");
+            Thread.Sleep(5000); //This is not optimal, need to somehow subcribe to save button event I think
             np.CloseMainWindow();
         }
     }
