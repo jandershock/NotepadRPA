@@ -3,7 +3,7 @@ using System.Diagnostics;
 using System.Runtime.InteropServices;
 using System.Windows;
 using System.Windows.Automation;
-using System.Windows.Controls;
+using System.Windows.Forms;
 
 namespace NotepadRPA
 {
@@ -40,7 +40,7 @@ namespace NotepadRPA
                 {
                     if (allProcesses[i].ProcessName == "notepad")
                     {
-                        MessageBox.Show("Please close Notepad before running this program.", "Notepad Process Detected", MessageBoxButton.OK, MessageBoxImage.Error);
+                        System.Windows.MessageBox.Show("Please close Notepad before running this program.", "Notepad Process Detected", MessageBoxButton.OK, MessageBoxImage.Error);
 
                         IntPtr notepad_hwnd = allProcesses[i].MainWindowHandle;
                         Windowplacement placement = new Windowplacement();
@@ -110,6 +110,12 @@ namespace NotepadRPA
                 invokePattern.Invoke();
             }
 
+            void SetValue(AutomationElement element)
+            {
+                ValuePattern valuePattern = (ValuePattern)element.GetCurrentPattern(ValuePattern.Pattern);
+                valuePattern.SetValue(System.IO.Path.GetTempPath() + "hello.txt");
+            }
+
             if (isNotepadRunning())
             {
                 Debug.WriteLine("Please close Notepad before running this program.");
@@ -120,6 +126,8 @@ namespace NotepadRPA
             // Start notepad and wait for idle state
             Process np = Process.Start("notepad.exe");
             np.WaitForInputIdle();
+            SendKeys.SendWait("Hello World");
+
 
             //Get notepad window handle and recursively examine all elements in its associated tree
             IntPtr windowHandle = np.MainWindowHandle;
@@ -134,12 +142,23 @@ namespace NotepadRPA
             InvokeElement(saveAsElement);
 
             Debug.WriteLine("");
+            Debug.WriteLine("Looking for save as");
             //Get element tree for save as dialog menu
-            AutomationElement saveAsDialogElement = FindTreeViewDescendants(AutomationElement.RootElement, "Save As");
+            AutomationElement saveAsDialogElement = AutomationElement.RootElement.FindFirst(TreeScope.Subtree, new PropertyCondition(AutomationElement.NameProperty, "Save As"));
+
 
             Debug.WriteLine("");
-            AutomationElement search = FindTreeViewDescendants(saveAsDialogElement, "");
+            Debug.WriteLine("Looking in save as");
 
+            AutomationElement tmp = FindTreeViewDescendants(saveAsDialogElement, "qwerty");
+            PropertyCondition p1 = new PropertyCondition(AutomationElement.NameProperty, "File name:");
+            PropertyCondition p2 = new PropertyCondition(AutomationElement.ControlTypeProperty, ControlType.Edit);
+            System.Windows.Automation.Condition[] conditionArray = new System.Windows.Automation.Condition[] {p1, p2};
+            AutomationElement saveLabelElement = saveAsDialogElement.FindFirst(TreeScope.Subtree, new AndCondition(conditionArray));
+
+            //Modify value of the file name
+            SetValue(saveLabelElement);
+            
             //Close notepad
             np.CloseMainWindow();
         }
