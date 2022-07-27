@@ -203,6 +203,10 @@ namespace NotepadRPA
             Console.WriteLine("Closing Notepad . . .");
             Thread.Sleep(5000); //This is not optimal, need to somehow subcribe to save button event I think
             np.CloseMainWindow();
+
+            //Type any button to exit program
+            Console.WriteLine("\nPress any button to exit the program");
+            Console.ReadKey();
         }
     }
 }
