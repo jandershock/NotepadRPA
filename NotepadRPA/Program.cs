@@ -120,6 +120,7 @@ namespace NotepadRPA
             //Close notepad
             Console.WriteLine("Closing Notepad . . .");
             Thread.Sleep(1000);
+    
             np.CloseMainWindow();
 
             //Type any button to exit program

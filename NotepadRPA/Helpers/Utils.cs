@@ -44,45 +44,5 @@ namespace NotepadRPA.Helpers
             }
             return false;
         }
-
-        internal static AutomationElement FindTreeViewDescendants(AutomationElement targetTreeViewElement, string searchParam)
-        {
-
-            if (targetTreeViewElement == null)
-                return null;
-
-            AutomationElement foundNode = null;
-            AutomationElement elementNode =
-                TreeWalker.ControlViewWalker.GetFirstChild(targetTreeViewElement);
-
-            while (elementNode != null)
-            {
-                string controlName =
-                    elementNode.Current.Name == "" ?
-                    "Unnamed control" : elementNode.Current.Name;
-                string autoIdName =
-                    elementNode.Current.AutomationId == "" ?
-                    "No AutomationID" : elementNode.Current.AutomationId;
-                Console.WriteLine($"Name: {controlName} AutomationId: {autoIdName}");
-
-                if (controlName == searchParam)
-                {
-                    foundNode = elementNode;
-                    return foundNode;
-                }
-
-                foundNode = FindTreeViewDescendants(elementNode, searchParam);
-                if (foundNode == null)
-                {
-                    elementNode = TreeWalker.ControlViewWalker.GetNextSibling(elementNode);
-                }
-                else
-                {
-                    return foundNode;
-                }
-
-            }
-            return foundNode;
-        }
     }
 }
