@@ -12,6 +12,8 @@ namespace NotepadRPA
     {
         static void Main(string[] args)
         {
+            string fileNameAndPath = Path.GetTempPath() + "hello.txt";
+
             //Check for running Notepad processes
             Console.WriteLine("Checking for running Notepad processes . . .");
             if (Utils.isNotepadRunning())
@@ -47,7 +49,7 @@ namespace NotepadRPA
             //Find the "Save As" dialog window
             Console.WriteLine("Searching for 'Save As' dialog window . . .");
             //Get element tree for save as dialog menu
-            Thread.Sleep(500);
+            Thread.Sleep(1000);
             AutomationElement saveAsDialogElement = AutomationElement.RootElement.FindFirst(TreeScope.Subtree, new AndCondition(new System.Windows.Automation.Condition[]
             {
                         new PropertyCondition(AutomationElement.NameProperty, "Save As"),
@@ -60,16 +62,25 @@ namespace NotepadRPA
             PropertyCondition p2 = new PropertyCondition(AutomationElement.ControlTypeProperty, ControlType.Edit);
             Condition[] conditionArray = new Condition[] { p1, p2 };
 
-            if(saveAsDialogElement == null)
+            AutomationElement saveLabelElement = null;
+            try
             {
-                Console.Write("null problem");
+                saveLabelElement = saveAsDialogElement.FindFirst(TreeScope.Subtree, new AndCondition(conditionArray));
+            }
+            catch (NullReferenceException ex)
+            {
+                Console.Write("Error: Accessed element is null.");
                 return;
             }
-            AutomationElement saveLabelElement = saveAsDialogElement.FindFirst(TreeScope.Subtree, new AndCondition(conditionArray));
+            catch (Exception ex)
+            {
+                Console.WriteLine(ex);
+                return;
+            }
 
             //Modify value of the file name
             Console.WriteLine("Modifying file name . . .");
-            ElementFunctions.SetValue(saveLabelElement, Path.GetTempPath() + "hello.txt");
+            ElementFunctions.SetValue(saveLabelElement, fileNameAndPath);
 
             //Get Save button and invoke element
             Console.WriteLine("Searching for 'Save' button element . . .");
@@ -80,7 +91,6 @@ namespace NotepadRPA
             }));
             Console.WriteLine("Invoking 'Save' button . . .");
             ElementFunctions.InvokeElementBackgroundProcess(saveButtonElement);
-            //Thread.Sleep(500);
 
             //Check if "Confirm Save As" dialog window exists
             Console.WriteLine(@"Looking for 'Confirm Save As' dialog window");
@@ -105,11 +115,11 @@ namespace NotepadRPA
             }
 
             //Verify file was saved to location
-            Console.WriteLine(File.Exists(System.IO.Path.GetTempPath() + "hello.txt") ? "File saved, task completed successfully" : "Warning: File was not saved");
+            Console.WriteLine(File.Exists(fileNameAndPath) ? "File saved, task completed successfully" : "Warning: File was not saved");
 
             //Close notepad
             Console.WriteLine("Closing Notepad . . .");
-            Thread.Sleep(500);
+            Thread.Sleep(1000);
             np.CloseMainWindow();
 
             //Type any button to exit program
